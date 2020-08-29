@@ -1,0 +1,7 @@
+DumbAssert/DumbAssertDev/obj/*
+DumbAssert/DumbAssertDev/bin/*
+DumbAssert/DumbAssert.test/obj/*
+DumbAssert/DumbAssert.test/bin/*
+DumbAssert/DumbAssert.test/.vscode/*
+test.db
+.DS_Store
