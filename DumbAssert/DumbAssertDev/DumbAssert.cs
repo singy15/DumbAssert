@@ -128,6 +128,7 @@ namespace DumbAssertNS
         {
             switch(value)
             {
+                case null: return DumbAssertConfig.NullString;
                 case Boolean val: return Serialize(val);
                 case Byte val: return Serialize(val);
                 case Char val: return Serialize(val);
@@ -188,6 +189,8 @@ namespace DumbAssertNS
         public static string TestDataBaseDir = null;
 
         public static DumbAssertSerializer Serializer = new DumbAssertSerializer();
+
+        public static string NullString = "<NULL>";
     }
 
     public class TestData
@@ -288,12 +291,22 @@ namespace DumbAssertNS
             string columns = string.Join(",", this.Columns);
             foreach(var row in this.Rows)
             {
-                string values = string.Join(",", row.ToList().Select(s => "'" + s + "'"));
+                string values = string.Join(",", row.ToList().Select(s => ValueToSQL(s)));
                 sql.Add(string.Format(templateInsert, this.TableName, columns, values));
             }
 
             // Join and return sql
             return string.Join(DumbAssertConfig.NewLine, sql);
+        }
+
+        private string ValueToSQL(string valueStr)
+        {
+            if(valueStr == DumbAssertConfig.NullString)
+            {
+                return "NULL";
+            }
+
+            return "'" + valueStr + "'";
         }
     }
 }

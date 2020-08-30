@@ -35,7 +35,7 @@ namespace DumbAssertTestNS
             Assert.IsNotNull(sql);
             Assert.That(sql, Is.EqualTo(
                 "DELETE FROM m_item;" + Environment.NewLine
-                + "INSERT INTO m_item (item_id,name,desc) VALUES ('1','item1','');" + Environment.NewLine
+                + "INSERT INTO m_item (item_id,name,desc) VALUES ('1','item1',NULL);" + Environment.NewLine
                 + "INSERT INTO m_item (item_id,name,desc) VALUES ('2','item2','desc2');"));
         }
 
@@ -57,7 +57,7 @@ namespace DumbAssertTestNS
             Assert.IsNotNull(sql);
             Assert.That(sql, Is.EqualTo(
                 "DELETE FROM m_item;" + Environment.NewLine
-                + "INSERT INTO m_item (item_id,name,desc) VALUES ('1','item1','');" + Environment.NewLine
+                + "INSERT INTO m_item (item_id,name,desc) VALUES ('1','item1',NULL);" + Environment.NewLine
                 + "INSERT INTO m_item (item_id,name,desc) VALUES ('2','item2','desc2');" + Environment.NewLine
                 + "DELETE FROM t_sale;" + Environment.NewLine
                 + "INSERT INTO t_sale (sale_id,item_id,qty,payed) VALUES ('1','1','100','1');" + Environment.NewLine
