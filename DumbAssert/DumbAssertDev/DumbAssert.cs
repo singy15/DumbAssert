@@ -14,7 +14,7 @@ namespace DumbAssertNS
 
         public IDbTransaction Transaction { get; set; }
 
-        public Dictionary<string, TestData> Repository { get; set; }
+        private Dictionary<string, TestData> Repository { get; set; }
 
         public DumbAssert(IDbConnection connection = null, IDbTransaction transaction = null)
         {
@@ -30,16 +30,14 @@ namespace DumbAssertNS
         public void Assert(string testId)
         {
             TestData testdata = LoadOrGetTestData(testId);
-            string templateSelect = "SELECT {1} FROM {0} ORDER BY {1}";
             foreach(var exp in testdata.Expected)
             {
                 bool ownedTransaction = (null == this.Transaction);
-                using(IDbTransaction tx = (ownedTransaction)? this.Connection.BeginTransaction() : this.Transaction)
+                using(IDbTransaction tx = 
+                    (ownedTransaction)? this.Connection.BeginTransaction() : this.Transaction)
                 using(IDbCommand cmd = this.Connection.CreateCommand())
                 {
-                    cmd.CommandText = string.Format(templateSelect, 
-                        exp.TableName, 
-                        string.Join(",", exp.Columns.Select(s => ColumnNameToSQL(s)).ToList()));
+                    cmd.CommandText = (new SQLBuilder()).Select(exp.TableName, exp.Columns).Build();
                     cmd.Transaction = tx;
                     using(IDataReader reader = cmd.ExecuteReader())
                     {
@@ -68,7 +66,8 @@ namespace DumbAssertNS
                     {
                         throw new Exception(
                             string.Format(
-                                "AssertTable failed Table:{5} Row:{2} Column:{3} Expected:[{0}] Actual:[{1}] ExpectedSource:{4}",
+                                "AssertTable failed Table:{5} Row:{2} Column:{3}"
+                                + " Expected:[{0}] Actual:[{1}] ExpectedSource:{4}",
                                 valExp, valAct, r, exp.Columns[c], testdata.DirPath, exp.TableName));
                     }
                 }
@@ -222,16 +221,19 @@ namespace DumbAssertNS
         public TestData(string dirPath)
         {
             // Set test info
-            string[] testInfo = Path.GetFileName(dirPath).Split(DumbAssertConfig.PathDelimiter);
+            string[] testInfo = 
+                Path.GetFileName(dirPath).Split(DumbAssertConfig.PathDelimiter);
             this.TestId = testInfo[1];
             this.Desc = testInfo[2];
             this.DirPath = Path.GetFullPath(dirPath);
 
             // Load prerequisite
-            this.Prerequisite = ReadTableDataAll(dirPath, DumbAssertConfig.PrefixPrerequisite);
+            this.Prerequisite = 
+                ReadTableDataAll(dirPath, DumbAssertConfig.PrefixPrerequisite);
 
             // Load expected
-            this.Expected = ReadTableDataAll(dirPath, DumbAssertConfig.PrefixExpected);
+            this.Expected = 
+                ReadTableDataAll(dirPath, DumbAssertConfig.PrefixExpected);
         }
 
         public string GeneratePrepareSQL()
@@ -275,7 +277,8 @@ namespace DumbAssertNS
         public TableData(string filePath) 
         {
             // Read CSV
-            TextFieldParser parser = new TextFieldParser(filePath, DumbAssertConfig.Encoding);
+            TextFieldParser parser = 
+                new TextFieldParser(filePath, DumbAssertConfig.Encoding);
             parser.SetDelimiters(",");
             this.Data = new List<string[]>();
             while(!parser.EndOfData)
@@ -286,37 +289,68 @@ namespace DumbAssertNS
             this.Rows = this.Data.Skip(1).ToList();
 
             // Set table name
-            this.TableName = Path.GetFileNameWithoutExtension(filePath).Split(DumbAssertConfig.PathDelimiter)[1];
+            this.TableName = Path.GetFileNameWithoutExtension(filePath)
+                .Split(DumbAssertConfig.PathDelimiter)[1];
         }
 
         public string GenerateInsertSQL()
         {
-            List<string> sql = new List<string>();
+            SQLBuilder builder = new SQLBuilder();
 
             // Add delete statement
             if(DumbAssertConfig.DeleteBeforeInsert)
             {
-                string templateDelete = "DELETE FROM {0};";
-                sql.Add(string.Format(templateDelete, this.TableName));
+                builder.DeleteFrom(this.TableName);
             }
 
             // Add insert statement
-            string templateInsert = "INSERT INTO {0} ({1}) VALUES ({2});";
-            string columns = string.Join(",", this.Columns.Select(s => ColumnNameToSQL(s)).ToList());
             foreach(var row in this.Rows)
             {
-                string values = string.Join(",", row.ToList().Select(s => ValueToSQL(s)));
-                sql.Add(string.Format(templateInsert, this.TableName, columns, values));
+                builder.InsertInto(this.TableName, this.Columns, row);
             }
 
-            // Join and return sql
-            Console.WriteLine(string.Join(DumbAssertConfig.NewLine, sql));
-            return string.Join(DumbAssertConfig.NewLine, sql);
+            return builder.Build();
+        }
+    }
+
+    public class SQLBuilder
+    {
+        private List<string> sqls = new List<string>();
+
+        public SQLBuilder InsertInto(string table, string[] columns, string[] values)
+        {
+            string templateInsert = "INSERT INTO {0} ({1}) VALUES ({2});";
+            string cols = ListToSQL(columns.Select(s => ColumnNameToSQL(s)));
+            string vals = ListToSQL(values.Select(s => ValueToSQL(s)));
+            sqls.Add(string.Format(templateInsert, table, cols, vals));
+            return this;
+        }
+
+        public SQLBuilder DeleteFrom(string table)
+        {
+            string templateDelete = "DELETE FROM {0};";
+            sqls.Add(string.Format(templateDelete, table));
+            return this;
+        }
+
+        public SQLBuilder Select(string table, string[] columns)
+        {
+            string templateSelect = "SELECT {1} FROM {0} ORDER BY {1};";
+            sqls.Add(string.Format(templateSelect, table, 
+                ListToSQL(columns.Select(s => ColumnNameToSQL(s)))));
+            return this;
+        }
+
+        public string Build()
+        {
+            return string.Join(DumbAssertConfig.NewLine, sqls);
         }
 
         private string ColumnNameToSQL(string columnStr)
         {
-            return @"""" + columnStr + @"""";
+            return ((DumbAssertConfig.QuoteColumnName)? @"""" : "") 
+                + columnStr 
+                + ((DumbAssertConfig.QuoteColumnName)? @"""" : "");
         }
 
         private string ValueToSQL(string valueStr)
@@ -327,6 +361,11 @@ namespace DumbAssertNS
             }
 
             return "'" + valueStr + "'";
+        }
+
+        private string ListToSQL(IEnumerable<string> list)
+        {
+            return string.Join(",", list);
         }
     }
 }
