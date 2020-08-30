@@ -37,7 +37,9 @@ namespace DumbAssertNS
                 using(IDbTransaction tx = (ownedTransaction)? this.Connection.BeginTransaction() : this.Transaction)
                 using(IDbCommand cmd = this.Connection.CreateCommand())
                 {
-                    cmd.CommandText = string.Format(templateSelect, exp.TableName, string.Join(",", exp.Columns.Select(s => ColumnNameToSQL(s)).ToList()));
+                    cmd.CommandText = string.Format(templateSelect, 
+                        exp.TableName, 
+                        string.Join(",", exp.Columns.Select(s => ColumnNameToSQL(s)).ToList()));
                     cmd.Transaction = tx;
                     using(IDataReader reader = cmd.ExecuteReader())
                     {
@@ -65,7 +67,8 @@ namespace DumbAssertNS
                     if (!(valExp == valAct))
                     {
                         throw new Exception(
-                            string.Format("AssertTable failed Table:{5} Row:{2} Column:{3} Expected:[{0}] Actual:[{1}] ExpectedSource:{4}",
+                            string.Format(
+                                "AssertTable failed Table:{5} Row:{2} Column:{3} Expected:[{0}] Actual:[{1}] ExpectedSource:{4}",
                                 valExp, valAct, r, exp.Columns[c], testdata.DirPath, exp.TableName));
                     }
                 }
@@ -158,7 +161,7 @@ namespace DumbAssertNS
         public string Serialize(Boolean value) { return value.ToString(); }
         public string Serialize(Byte value) { return value.ToString(); }
         public string Serialize(Char value) { return value.ToString(); }
-        public string Serialize(DateTime value) { return value.ToString("yyyy-MM-dd HH:mm:ss.fff"); }
+        public string Serialize(DateTime value) { return value.ToString(DumbAssertConfig.DateTimePattern); }
         public string Serialize(Decimal value) { return value.ToString(); }
         public string Serialize(Double value) { return value.ToString(); }
         public string Serialize(Guid value) { return value.ToString(); }
@@ -196,6 +199,12 @@ namespace DumbAssertNS
         public static DumbAssertSerializer Serializer = new DumbAssertSerializer();
 
         public static string NullString = "<NULL>";
+
+        public static Encoding Encoding = Encoding.GetEncoding("UTF-8");
+
+        public static bool QuoteColumnName = true;
+
+        public static string DateTimePattern = "yyyy-MM-dd HH:mm:ss.fff";
     }
 
     public class TestData
@@ -266,7 +275,7 @@ namespace DumbAssertNS
         public TableData(string filePath) 
         {
             // Read CSV
-            TextFieldParser parser = new TextFieldParser(filePath, Encoding.GetEncoding("UTF-8"));
+            TextFieldParser parser = new TextFieldParser(filePath, DumbAssertConfig.Encoding);
             parser.SetDelimiters(",");
             this.Data = new List<string[]>();
             while(!parser.EndOfData)
