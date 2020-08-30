@@ -1,6 +1,7 @@
 using System;
 using System.Data;
 using System.Data.SQLite;
+using Npgsql;
 using NUnit.Framework;
 using DumbAssertNS;
 
@@ -11,6 +12,8 @@ namespace DumbAssertTestNS
         private readonly string TEST_DIR = "../../../../../T__1__sample";
 
         private readonly string SQLITE_DB_CONNECTION_STRING = "Data Source=../../../../../test.db";
+
+        private readonly string PGSQL_DB_CONNECTION_STRING = "Server=127.0.0.1;Port=5432;Database=testdb;User Id=postgres;Password=postgres;";
 
         [SetUp]
         public void Setup()
@@ -35,8 +38,8 @@ namespace DumbAssertTestNS
             Assert.IsNotNull(sql);
             Assert.That(sql, Is.EqualTo(
                 "DELETE FROM m_item;" + Environment.NewLine
-                + "INSERT INTO m_item (item_id,name,desc) VALUES ('1','item1',NULL);" + Environment.NewLine
-                + "INSERT INTO m_item (item_id,name,desc) VALUES ('2','item2','desc2');"));
+                + @"INSERT INTO m_item (""item_id"",""name"",""desc"") VALUES ('1','item1',NULL);" + Environment.NewLine
+                + @"INSERT INTO m_item (""item_id"",""name"",""desc"") VALUES ('2','item2','desc2');"));
         }
 
         [Test]
@@ -56,12 +59,12 @@ namespace DumbAssertTestNS
             string sql = data.GeneratePrepareSQL();
             Assert.IsNotNull(sql);
             Assert.That(sql, Is.EqualTo(
-                "DELETE FROM m_item;" + Environment.NewLine
-                + "INSERT INTO m_item (item_id,name,desc) VALUES ('1','item1',NULL);" + Environment.NewLine
-                + "INSERT INTO m_item (item_id,name,desc) VALUES ('2','item2','desc2');" + Environment.NewLine
-                + "DELETE FROM t_sale;" + Environment.NewLine
-                + "INSERT INTO t_sale (sale_id,item_id,qty,payed) VALUES ('1','1','100','1');" + Environment.NewLine
-                + "INSERT INTO t_sale (sale_id,item_id,qty,payed) VALUES ('2','2','200','0');"
+                @"DELETE FROM m_item;" + Environment.NewLine
+                + @"INSERT INTO m_item (""item_id"",""name"",""desc"") VALUES ('1','item1',NULL);" + Environment.NewLine
+                + @"INSERT INTO m_item (""item_id"",""name"",""desc"") VALUES ('2','item2','desc2');" + Environment.NewLine
+                + @"DELETE FROM t_sale;" + Environment.NewLine
+                + @"INSERT INTO t_sale (""sale_id"",""item_id"",""qty"",""payed"") VALUES ('1','1','100','1');" + Environment.NewLine
+                + @"INSERT INTO t_sale (""sale_id"",""item_id"",""qty"",""payed"") VALUES ('2','2','200','0');"
                 ));
         }
 
@@ -81,6 +84,30 @@ namespace DumbAssertTestNS
         {
             DumbAssertConfig.TestDataBaseDir = "../../../../../";
             using(IDbConnection conn = new SQLiteConnection(SQLITE_DB_CONNECTION_STRING)) {
+                conn.Open();
+                DumbAssert du = new DumbAssert(conn);
+                du.Prepare("1");
+                du.Assert("1");
+                conn.Close();
+            }
+        }
+
+        [Test]
+        public void TestPreparePg() 
+        {
+            DumbAssertConfig.TestDataBaseDir = "../../../../../";
+            using(IDbConnection conn = new NpgsqlConnection(PGSQL_DB_CONNECTION_STRING)) {
+                conn.Open();
+                (new DumbAssert(conn)).Prepare("1");
+                conn.Close();
+            }
+        }
+
+        [Test]
+        public void TestAssertTablePg() 
+        {
+            DumbAssertConfig.TestDataBaseDir = "../../../../../";
+            using(IDbConnection conn = new NpgsqlConnection(PGSQL_DB_CONNECTION_STRING)) {
                 conn.Open();
                 DumbAssert du = new DumbAssert(conn);
                 du.Prepare("1");

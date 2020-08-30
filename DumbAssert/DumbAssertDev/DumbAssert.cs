@@ -37,7 +37,7 @@ namespace DumbAssertNS
                 using(IDbTransaction tx = (ownedTransaction)? this.Connection.BeginTransaction() : this.Transaction)
                 using(IDbCommand cmd = this.Connection.CreateCommand())
                 {
-                    cmd.CommandText = string.Format(templateSelect, exp.TableName, string.Join(",", exp.Columns));
+                    cmd.CommandText = string.Format(templateSelect, exp.TableName, string.Join(",", exp.Columns.Select(s => ColumnNameToSQL(s)).ToList()));
                     cmd.Transaction = tx;
                     using(IDataReader reader = cmd.ExecuteReader())
                     {
@@ -119,6 +119,11 @@ namespace DumbAssertNS
                     tx.Commit();
                 }
             }
+        }
+
+        private string ColumnNameToSQL(string columnStr)
+        {
+            return @"""" + columnStr + @"""";
         }
     }
 
@@ -288,7 +293,7 @@ namespace DumbAssertNS
 
             // Add insert statement
             string templateInsert = "INSERT INTO {0} ({1}) VALUES ({2});";
-            string columns = string.Join(",", this.Columns);
+            string columns = string.Join(",", this.Columns.Select(s => ColumnNameToSQL(s)).ToList());
             foreach(var row in this.Rows)
             {
                 string values = string.Join(",", row.ToList().Select(s => ValueToSQL(s)));
@@ -296,7 +301,13 @@ namespace DumbAssertNS
             }
 
             // Join and return sql
+            Console.WriteLine(string.Join(DumbAssertConfig.NewLine, sql));
             return string.Join(DumbAssertConfig.NewLine, sql);
+        }
+
+        private string ColumnNameToSQL(string columnStr)
+        {
+            return @"""" + columnStr + @"""";
         }
 
         private string ValueToSQL(string valueStr)
