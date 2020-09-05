@@ -97,5 +97,20 @@ namespace DumbAssertTestNS
                 conn.Close();
             }
         }
+
+        [Test]
+        public void TestUseExistingTransaction() 
+        {
+            DumbAssertConfig.TestDataBaseDir = TEST_DATA_BASE_DIR;
+            using(IDbConnection conn = new NpgsqlConnection(PGSQL_DB_CONNECTION_STRING)) {
+                conn.Open();
+                var tx = conn.BeginTransaction();
+                DumbAssert du = new DumbAssert(conn, tx);
+                du.Prepare("1-pg");
+                du.Assert("1-pg");
+                tx.Commit();
+                conn.Close();
+            }
+        }
     }
 }

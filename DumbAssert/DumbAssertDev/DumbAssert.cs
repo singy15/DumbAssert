@@ -33,21 +33,33 @@ namespace DumbAssertNS
             foreach(var exp in testdata.Expected)
             {
                 bool ownedTransaction = (null == this.Transaction);
-                using(IDbTransaction tx = 
-                    (ownedTransaction)? this.Connection.BeginTransaction() : this.Transaction)
                 using(IDbCommand cmd = this.Connection.CreateCommand())
                 {
                     cmd.CommandText = (new SQLBuilder()).Select(exp.TableName, exp.Columns).Build();
-                    cmd.Transaction = tx;
-                    using(IDataReader reader = cmd.ExecuteReader())
+
+                    if(ownedTransaction)
                     {
-                        DataTable tbl = new DataTable();
-                        tbl.Load(reader);
-                        AssertTable(testdata, exp, tbl);
+                        using(var tx = this.Connection.BeginTransaction())
+                        {
+                            cmd.Transaction = tx;
+                            using(IDataReader reader = cmd.ExecuteReader())
+                            {
+                                DataTable tbl = new DataTable();
+                                tbl.Load(reader);
+                                AssertTable(testdata, exp, tbl);
+                            }
+                            tx.Commit();
+                        }
                     }
-                    if (ownedTransaction)
+                    else
                     {
-                        tx.Rollback();
+                        cmd.Transaction = this.Transaction;
+                        using(IDataReader reader = cmd.ExecuteReader())
+                        {
+                            DataTable tbl = new DataTable();
+                            tbl.Load(reader);
+                            AssertTable(testdata, exp, tbl);
+                        }
                     }
                 }
             }
@@ -110,15 +122,23 @@ namespace DumbAssertNS
         private void ExecuteSQL(string sql) 
         {
             bool ownedTransaction = (null == this.Transaction);
-            using(var tx = (ownedTransaction)? this.Connection.BeginTransaction() : this.Transaction)
             using(var cmd = this.Connection.CreateCommand())
             {
-                cmd.Transaction = tx;
                 cmd.CommandText = sql;
-                cmd.ExecuteNonQuery();
+
                 if(ownedTransaction)
                 {
-                    tx.Commit();
+                    using(var tx = this.Connection.BeginTransaction())
+                    {
+                        cmd.Transaction = tx;
+                        cmd.ExecuteNonQuery();
+                        tx.Commit();
+                    }
+                }
+                else
+                {
+                    cmd.Transaction = this.Transaction;
+                    cmd.ExecuteNonQuery();
                 }
             }
         }
