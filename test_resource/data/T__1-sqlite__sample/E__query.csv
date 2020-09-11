@@ -1,0 +1,4 @@
+"@query{select name, 'foo' as bar from m_item}",,
+name,bar
+item1,foo
+item2,foo

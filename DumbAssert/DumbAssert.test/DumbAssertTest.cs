@@ -29,6 +29,19 @@ namespace DumbAssertTestNS
         {
             TableData data = new TableData(TEST_DIR_SQLITE + "/R__m_item.csv");
             Assert.IsTrue(data.TableName == "m_item");
+            Assert.IsTrue(data.DataType == TableData.TableDataType.Table);
+            Assert.IsTrue(data.Data.Count > 0);
+            Assert.IsTrue(data.Columns.Length > 0);
+            Assert.IsTrue(data.Rows.Count > 0);
+        }
+
+        [Test]
+        public void TestTableDataCtorQuery() 
+        {
+            TableData data = new TableData(TEST_DIR_SQLITE + "/E__query.csv");
+            Assert.IsTrue(data.TableName == "");
+            Assert.IsTrue(data.DataType == TableData.TableDataType.Query);
+            Assert.IsTrue(data.Query == "select name, 'foo' as bar from m_item");
             Assert.IsTrue(data.Data.Count > 0);
             Assert.IsTrue(data.Columns.Length > 0);
             Assert.IsTrue(data.Rows.Count > 0);
@@ -53,7 +66,7 @@ namespace DumbAssertTestNS
             Assert.IsTrue(data.TestId == "1-sqlite");
             Assert.IsTrue(data.Desc == "sample");
             Assert.IsTrue(data.Prerequisite.Count == 2);
-            Assert.IsTrue(data.Expected.Count == 2);
+            Assert.IsTrue(data.Expected.Count == 3);
         }
 
         [Test]

@@ -5,6 +5,7 @@ using System.Text;
 using System.IO;
 using System.Linq;
 using System.Data;
+using System.Text.RegularExpressions;
 
 namespace DumbAssertNS
 {
@@ -35,7 +36,14 @@ namespace DumbAssertNS
                 bool ownedTransaction = (null == this.Transaction);
                 using(IDbCommand cmd = this.Connection.CreateCommand())
                 {
-                    cmd.CommandText = (new SQLBuilder()).Select(exp.TableName, exp.Columns).Build();
+                    if(exp.DataType == TableData.TableDataType.Table)
+                    {
+                        cmd.CommandText = (new SQLBuilder()).Select(exp.TableName, exp.Columns).Build();
+                    }
+                    else
+                    {
+                        cmd.CommandText = exp.Query;
+                    }
 
                     if(ownedTransaction)
                     {
@@ -286,6 +294,13 @@ namespace DumbAssertNS
 
     public class TableData 
     {
+        public enum TableDataType {
+            Query,
+            Table
+        }
+
+        public TableDataType DataType { get; set; }
+
         public string TableName { get; set; }
 
         public List<string[]> Data { get; set; }
@@ -293,6 +308,8 @@ namespace DumbAssertNS
         public string[] Columns { get; set; }
 
         public List<string[]> Rows { get; set; }
+
+        public string Query { get; set; }
 
         public TableData(string filePath) 
         {
@@ -305,12 +322,29 @@ namespace DumbAssertNS
             {
                 this.Data.Add(parser.ReadFields());
             }
-            this.Columns = this.Data[0];
-            this.Rows = this.Data.Skip(1).ToList();
 
-            // Set table name
-            this.TableName = Path.GetFileNameWithoutExtension(filePath)
-                .Split(DumbAssertConfig.PathDelimiter)[1];
+            if(Regex.IsMatch(this.Data[0][0], "@query{.*}"))
+            {
+                this.DataType = TableDataType.Query;
+                this.Columns = this.Data[1];
+                this.Rows = this.Data.Skip(2).ToList();
+
+                Regex regex = new Regex("@query{(?<query>.*?)}", 
+                    RegexOptions.IgnoreCase | RegexOptions.Singleline);
+                Match match = regex.Match(this.Data[0][0]);
+                this.Query = match.Groups["query"].Value;
+                this.TableName = string.Empty;
+            }
+            else
+            {
+                this.DataType = TableDataType.Table;
+                this.Columns = this.Data[0];
+                this.Rows = this.Data.Skip(1).ToList();
+
+                // Set table name
+                this.TableName = Path.GetFileNameWithoutExtension(filePath)
+                    .Split(DumbAssertConfig.PathDelimiter)[1];
+            }
         }
 
         public string GenerateInsertSQL()
