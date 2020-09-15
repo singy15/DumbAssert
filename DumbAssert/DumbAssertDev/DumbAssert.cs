@@ -17,6 +17,8 @@ namespace DumbAssertNS
 
         private Dictionary<string, TestData> Repository { get; set; }
 
+        private List<string> Prepared { get; set; } = new List<string>();
+
         public DumbAssert(IDbConnection connection = null, IDbTransaction transaction = null)
         {
             this.Connection = connection;
@@ -25,10 +27,24 @@ namespace DumbAssertNS
 
         public void Prepare(string testId)
         {
+            Prepared.Add(testId);
             ExecuteSQL(LoadOrGetTestData(testId).GeneratePrepareSQL());
         }
 
         public void Assert(string testId)
+        {
+            AssertByTestId(testId);
+        }
+
+        public void Assert()
+        {
+            foreach(var id in Prepared)
+            {
+                AssertByTestId(id);
+            }
+        }
+
+        private void AssertByTestId(string testId)
         {
             TestData testdata = LoadOrGetTestData(testId);
             foreach(var exp in testdata.Expected)
@@ -38,7 +54,7 @@ namespace DumbAssertNS
                 {
                     if(exp.DataType == TableData.TableDataType.Table)
                     {
-                        cmd.CommandText = (new SQLBuilder()).Select(exp.TableName, exp.Columns).Build();
+                        cmd.CommandText = (new SQLBuilder()).Select(exp.Name, exp.Columns).Build();
                     }
                     else
                     {
@@ -88,7 +104,7 @@ namespace DumbAssertNS
                             string.Format(
                                 "AssertTable failed Table:{5} Row:{2} Column:{3}"
                                 + " Expected:[{0}] Actual:[{1}] ExpectedSource:{4}",
-                                valExp, valAct, r, exp.Columns[c], testdata.DirPath, exp.TableName));
+                                valExp, valAct, r, exp.Columns[c], testdata.DirPath, exp.Name));
                     }
                 }
             }
@@ -267,7 +283,7 @@ namespace DumbAssertNS
         public string GeneratePrepareSQL()
         {
             return string.Join(DumbAssertConfig.NewLine, 
-                this.Prerequisite.OrderBy(s => s.TableName)
+                this.Prerequisite.OrderBy(s => s.Name)
                     .Select(p => p.GenerateInsertSQL()).ToList());
         }
 
@@ -301,7 +317,7 @@ namespace DumbAssertNS
 
         public TableDataType DataType { get; set; }
 
-        public string TableName { get; set; }
+        public string Name { get; set; }
 
         public List<string[]> Data { get; set; }
 
@@ -333,7 +349,7 @@ namespace DumbAssertNS
                     RegexOptions.IgnoreCase | RegexOptions.Singleline);
                 Match match = regex.Match(this.Data[0][0]);
                 this.Query = match.Groups["query"].Value;
-                this.TableName = string.Empty;
+                this.Name = string.Empty;
             }
             else
             {
@@ -342,7 +358,7 @@ namespace DumbAssertNS
                 this.Rows = this.Data.Skip(1).ToList();
 
                 // Set table name
-                this.TableName = Path.GetFileNameWithoutExtension(filePath)
+                this.Name = Path.GetFileNameWithoutExtension(filePath)
                     .Split(DumbAssertConfig.PathDelimiter)[1];
             }
         }
@@ -354,13 +370,13 @@ namespace DumbAssertNS
             // Add delete statement
             if(DumbAssertConfig.DeleteBeforeInsert)
             {
-                builder.DeleteFrom(this.TableName);
+                builder.DeleteFrom(this.Name);
             }
 
             // Add insert statement
             foreach(var row in this.Rows)
             {
-                builder.InsertInto(this.TableName, this.Columns, row);
+                builder.InsertInto(this.Name, this.Columns, row);
             }
 
             return builder.Build();

@@ -28,7 +28,7 @@ namespace DumbAssertTestNS
         public void TestTableDataCtor() 
         {
             TableData data = new TableData(TEST_DIR_SQLITE + "/R__m_item.csv");
-            Assert.IsTrue(data.TableName == "m_item");
+            Assert.IsTrue(data.Name == "m_item");
             Assert.IsTrue(data.DataType == TableData.TableDataType.Table);
             Assert.IsTrue(data.Data.Count > 0);
             Assert.IsTrue(data.Columns.Length > 0);
@@ -39,7 +39,7 @@ namespace DumbAssertTestNS
         public void TestTableDataCtorQuery() 
         {
             TableData data = new TableData(TEST_DIR_SQLITE + "/E__query.csv");
-            Assert.IsTrue(data.TableName == "");
+            Assert.IsTrue(data.Name == "");
             Assert.IsTrue(data.DataType == TableData.TableDataType.Query);
             Assert.IsTrue(data.Query == "select name, 'foo' as bar from m_item");
             Assert.IsTrue(data.Data.Count > 0);
@@ -86,7 +86,7 @@ namespace DumbAssertTestNS
         }
 
         [Test]
-        public void TestAssertTable() 
+        public void TestAssert() 
         {
             DumbAssertConfig.TestDataBaseDir = TEST_DATA_BASE_DIR;
             using(IDbConnection conn = new SQLiteConnection(SQLITE_DB_CONNECTION_STRING)) {
@@ -94,6 +94,19 @@ namespace DumbAssertTestNS
                 DumbAssert du = new DumbAssert(conn);
                 du.Prepare("1-sqlite");
                 du.Assert("1-sqlite");
+                conn.Close();
+            }
+        }
+
+        [Test]
+        public void TestAssertAllPrepared() 
+        {
+            DumbAssertConfig.TestDataBaseDir = TEST_DATA_BASE_DIR;
+            using(IDbConnection conn = new SQLiteConnection(SQLITE_DB_CONNECTION_STRING)) {
+                conn.Open();
+                DumbAssert du = new DumbAssert(conn);
+                du.Prepare("1-sqlite");
+                du.Assert();
                 conn.Close();
             }
         }
